@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import praw  # for reddit API
-import pickle  # for pickleRICK
+import json  # for data format
 from os.path import exists as does_file_exist  # for checking if file exist
 try:
     import our_secrets
@@ -31,15 +31,15 @@ for submission in reddit.subreddit('documentaries').hot(limit=25):
     list_of_data.append(data)
 
 # in first run, database.db does not exist, skip reading and appending
-if does_file_exist('database.db'):
+if does_file_exist('database.json'):
     # file exists, read the db, and load the data
-    with open('database.db', 'rb') as iowrap:  # write as bytes
-        old_list_of_data = pickle.load(iowrap)  # load the data from iowrap instance
-    print('INFO: Loaded \'databse.db\'')
+    with open('database.json', 'r') as iowrap:  # write as bytes
+        old_list_of_data = json.load(iowrap)  # load the data from iowrap instance
+    print('INFO: Loaded \'databse.json\'')
     # put the old_list_of_data together with the new data
     # TODO don't duplicate the data, tip use sets to filter, based on some unique information in submission
     list_of_data = old_list_of_data + list_of_data
 # write the db
-with open('database.db', 'wb') as iowrap:  # write as bytes
-    pickle.dump(list_of_data, iowrap)  # save the data to iowrap instance
-    print('INFO: Saved {0} items \'databse.db\''.format(len(list_of_data)))
+with open('database.json', 'w') as iowrap:  # write as bytes
+    json.dump(list_of_data, iowrap)  # save the data to iowrap instance
+    print('INFO: Saved {0} items \'databse.json\''.format(len(list_of_data)))

@@ -1,3 +1,4 @@
 our_secrets.py
 database.db
+database.json
 __pycache__/
