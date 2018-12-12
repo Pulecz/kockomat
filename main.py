@@ -22,8 +22,13 @@ reddit = praw.Reddit(client_id=our_secrets.client_id,
 
 # TODO when no internet connectivity (or train wifi with long timeouts) skip getting the data and quit gracefully
 # work with A subreddit
+score_list=[]
 for submission in reddit.subreddit('documentaries').hot(limit=25):
-    print(submission.title)
+	score_list.append(submission.ups)
+score_list.sort()
+score_list.reverse()
+for submission in reddit.subreddit('documentaries').hot(limit=10):
+    print("Title: ",submission.title,"\n","score:",score_list.pop(0),"\n")
     # dictionary for details
     data = {'title': submission.title,
         'theURL':submission.url, 
