@@ -9,8 +9,9 @@ except ImportError:
     exit(1)  # exit with errrcode 1
 
 # Define data structure
-# lists for multiple submissions
-list_of_data = []
+# dict for multiple submissions
+    # the reddit's submission ID will be the primary key
+dict_of_data = {}
 
 # make an instance from Reddit class defined in praw module
 # username and password is for write access, rest is for read only
@@ -20,26 +21,55 @@ reddit = praw.Reddit(client_id=our_secrets.client_id,
                      username=our_secrets.username,
                      password=our_secrets.password)
 
-# TODO when no internet connectivity (or train wifi with long timeouts) skip getting the data and quit gracefully
+# TODO when no internet connectivity (or train wifi with long timeouts)
+# skip getting the data and quit gracefully
+
+
 # work with A subreddit
-for submission in reddit.subreddit('documentaries').hot(limit=25):
-    print(submission.title)
+for submission in reddit.subreddit('documentaries').hot(limit=10):
+    #print("Title: {0}\nscore: {1}\n".format(
+         #submission.title, submission.ups))
     # dictionary for details
     data = {'title': submission.title,
-        'theURL':submission.url, 
-	"score" : submission.ups}
-    list_of_data.append(data)
+            'targetURL': submission.url,
+            'redditURL': submission.shortlink,
+            "score": submission.ups}
+    # save it to the dictionary with submission's reddit id
+    dict_of_data[submission.id] = data
 
-# in first run, database.db does not exist, skip reading and appending
+# print submissions with highest score first
+"""make a list of submussion.ids, highest first (reversed)
+x is the submussion.ids iterated in dict_of_data to use ['score'] key
+taken from:
+https://stackoverflow.com/questions/4110665/
+sort-nested-dictionary-by-value-and-remainder-by-another-value-in-python"""
+score_list = sorted(dict_of_data,
+                    key=lambda x: (dict_of_data[x]['score']), reverse=True)
+
+# score_list should have same length as dict_of_data, let's use .get() anyway
+for submission in score_list:
+    payload = dict_of_data.get(submission)
+    # if no payload, no data (this should never happen)
+    # even if this is done on the whole db, not just new data
+    if payload:
+        print("""Title: {0}
+                 score: {1}
+                 """.format(
+            payload['title'], payload['score']))
+
+# in first run, database.db does not exist
+# skip reading and appending continue at write the db
 if does_file_exist('database.db'):
     # file exists, read the db, and load the data
     with open('database.db', 'rb') as iowrap:  # write as bytes
-        old_list_of_data = pickle.load(iowrap)  # load the data from iowrap instance
+        # load the data from iowrap instance
+        old_dict_of_data = pickle.load(iowrap)
     print('INFO: Loaded \'databse.db\'')
-    # put the old_list_of_data together with the new data
-    # TODO don't duplicate the data, tip use sets to filter, based on some unique information in submission
-    list_of_data = old_list_of_data + list_of_data
+    # update the old data with new data and overwrite the old values
+    old_dict_of_data.update(dict_of_data)
+    # and save it to the dict_of_data
+    dict_of_data = old_dict_of_data
 # write the db
 with open('database.db', 'wb') as iowrap:  # write as bytes
-    pickle.dump(list_of_data, iowrap)  # save the data to iowrap instance
-    print('INFO: Saved {0} items \'databse.db\''.format(len(list_of_data)))
+    pickle.dump(dict_of_data, iowrap)  # save the data to iowrap instance
+    print('INFO: Saved {0} items \'databse.db\''.format(len(dict_of_data)))
