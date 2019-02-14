@@ -1,16 +1,12 @@
 #!/usr/bin/python
 import praw  # for reddit API
-import pickle  # for pickleRICK
+import sqla  # for sqliteDB
 from os.path import exists as does_file_exist  # for checking if file exist
 try:
     import our_secrets
 except ImportError:
     print('ha! you are missing the secretsssssss')
     exit(1)  # exit with errrcode 1
-
-# Define data structure
-# lists for multiple submissions
-list_of_data = []
 
 # make an instance from Reddit class defined in praw module
 # username and password is for write access, rest is for read only
@@ -20,26 +16,40 @@ reddit = praw.Reddit(client_id=our_secrets.client_id,
                      username=our_secrets.username,
                      password=our_secrets.password)
 
-# TODO when no internet connectivity (or train wifi with long timeouts) skip getting the data and quit gracefully
-# work with A subreddit
-for submission in reddit.subreddit('documentaries').hot(limit=25):
-    print(submission.title)
-    # dictionary for details
-    data = {'title': submission.title,
-        'theURL':submission.url, 
-	"score" : submission.ups}
-    list_of_data.append(data)
+# TODO when no internet connectivity (or train wifi with long timeouts)
+# skip getting the data and quit gracefully
 
-# in first run, database.db does not exist, skip reading and appending
+
+# Define data structure
+# dict for multiple submissions
+# the reddit's submission ID will be the primary key
+dict_of_data = {}
+
+# work with A subreddit
+for submission in reddit.subreddit('documentaries').new(limit=10):
+    # print("Title: {0}\nscore: {1}\n".format(
+        # submission.title, submission.ups))
+    # dictionary for details
+    data = {'id': submission.id,
+            'title': submission.title,
+            'targetURL': submission.url,
+            'redditURL': submission.shortlink,
+            "score": submission.ups}
+    dict_of_data[data['id']] = data
+
+# TODO print submissions with highest score first
+
+# in first run, database.db does not exist
+# skip reading and appending continue at write the db
 if does_file_exist('database.db'):
     # file exists, read the db, and load the data
-    with open('database.db', 'rb') as iowrap:  # write as bytes
-        old_list_of_data = pickle.load(iowrap)  # load the data from iowrap instance
-    print('INFO: Loaded \'databse.db\'')
-    # put the old_list_of_data together with the new data
-    # TODO don't duplicate the data, tip use sets to filter, based on some unique information in submission
-    list_of_data = old_list_of_data + list_of_data
+    sqla.metadata.create_all(sqla.engine)
 # write the db
-with open('database.db', 'wb') as iowrap:  # write as bytes
-    pickle.dump(list_of_data, iowrap)  # save the data to iowrap instance
-    print('INFO: Saved {0} items \'databse.db\''.format(len(list_of_data)))
+conn = sqla.engine.connect()
+ins = sqla.prispevky.insert()
+for prispevek in dict_of_data:
+    conn.execute(ins, id=dict_of_data[prispevek]['id'],
+                 title=dict_of_data[prispevek]['title'],
+                 targetURL=dict_of_data[prispevek]['targetURL'],
+                 redditURL=dict_of_data[prispevek]['redditURL'],
+                 score=dict_of_data[prispevek]['score'])
